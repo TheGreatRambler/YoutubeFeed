@@ -1,12 +1,20 @@
 {
-
 	"description": "Add a feed to Youtube in the style of Twitter. You can choose to follow people and their watched videos will appear in your feed",
 	"manifest_version": 2,
 	"name": "YoutubeFeed",
 	"version": "1.0",
 	"homepage_url": "https://github.com/TheGreatRambler/YoutubeFeed",
-	"content_scripts": [{
-		"matches": ["*://*.youtube.com/*"],
-		"js": ["content.js"]
-	}]
+	"content_scripts": [
+		{
+			"matches": [
+				"*://*.youtube.com/*"
+			],
+			"js": [
+				"content.js"
+			]
+		}
+	],
+	"web_accessible_resources": [
+		"images/feed.svg"
+	]
 }
