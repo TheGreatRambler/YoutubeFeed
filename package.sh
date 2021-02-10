@@ -1,0 +1,1 @@
+zip -r YoutubeFeed.xpi manifest.json content.js
