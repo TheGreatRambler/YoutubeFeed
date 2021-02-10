@@ -16,7 +16,14 @@ document.onload = function () {
 		localStorage.setItem("amRedirectingToFeed", "0");
 		window.history.pushState("", "", "/feed/feed");
 
-		var videosContainer       = document.getElementById("items");
+		// For some cursed reason, multiple containers are named items
+		var possibleContainers = document.querySelectorAll("#items");
+		var videosContainer;
+		if (possibleContainers.length == 7) {
+			videosContainer = possibleContainers[0];
+		} else if (possibleContainers.length == 11) {
+			videosContainer = possibleContainers[4];
+		}
 		var templateVideo         = videosContainer.firstElementChild;
 		var templateVerifiedBadge = document.getElementsByClassName("badge-style-type-verified")[0];
 
@@ -30,35 +37,45 @@ document.onload = function () {
 			verified: true,
 			// UNIX timestamp of when the person interacted with it
 			dateadded: 1612841880,
-			// Person who interacted with it
-			friend: "Wifies",
-			// URL of person who interacted with it
-			friendchannel: "https://www.youtube.com/c/WifiesMC"
+			// People who interacted with it
+			friends: [{
+				// Person who interacted
+				friend: "Wifies",
+				// URL of person who interacted with it
+				friendchannel: "https://www.youtube.com/c/WifiesMC"
+			}],
+			// Action that resulted in a recommendation
+			action: "Liked",
+			// What action resulted in a recommendation
 			// Date and views are essentially impossible to obtain without an API key
 			// As such, they are ignored
 		}];
 
 		videosToPresent.forEach(function (video) {
+			var newVideo = polymerClone (templateVideo);
+
 			var thumbnail = "https://img.youtube.com/vi/" + video.id + "/hqdefault.jpg";
 			var url       = "https://www.youtube.com/watch?v=" + video.id;
-
-			var newVideo = polymerClone (templateVideo);
 
 			newVideo.firstElementChild.children[0].firstElementChild.href                                                                                                                                    = url;
 			newVideo.firstElementChild.children[0].firstElementChild.search                                                                                                                                  = "?v=" + video.id;
 			newVideo.firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.src                                                                                                 = thumbnail;
 			newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1]["aria-label"]                                                                                                   = video.title;
 			newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].title                                                                                                           = video.title;
+			newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].innerHTML                                                                                                       = video.title;
 			newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].href                                                                                                            = url;
 			newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.innerHTML = video.creator;
 			newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.href      = video.creatorchannel;
 
 			// TODO
-			if (video.verified) {
-				firstElementChild.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[1] = polymerClone (templateVerifiedBadge);
-			} else {
-				firstElementChild.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[1].innerHTML = "";
-			}
+			//if (video.verified) {
+			//	firstElementChild.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[1] = polymerClone (templateVerifiedBadge);
+			//} else {
+			//	firstElementChild.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[1].innerHTML = "";
+			//}
+
+			newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1].children[0].innerHTML = video.action + " by " + video.friends.map(item => `<a href="${item.friendchannel}">${item.friend}</a>`).join(", ");
+			newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1].removeChild(newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1].children[1]);
 		});
 
 		sidebarContainer.insertBefore(newFeedElement, sidebarContainer.children[1]);
