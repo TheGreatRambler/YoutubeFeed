@@ -51,8 +51,13 @@ document.onload = function () {
 			// As such, they are ignored
 		}];
 
+		videosContainer.textContent = "";
+
 		videosToPresent.forEach(function (video) {
 			var newVideo = polymerClone (templateVideo);
+			
+			// Add first
+			videosContainer.appendChild(newVideo);
 
 			var thumbnail = "https://img.youtube.com/vi/" + video.id + "/hqdefault.jpg";
 			var url       = "https://www.youtube.com/watch?v=" + video.id;
@@ -75,10 +80,15 @@ document.onload = function () {
 			//}
 
 			newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1].children[0].innerHTML = video.action + " by " + video.friends.map(item => `<a href="${item.friendchannel}">${item.friend}</a>`).join(", ");
-			newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1].removeChild(newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1].children[1]);
-		});
 
-		sidebarContainer.insertBefore(newFeedElement, sidebarContainer.children[1]);
+			var unneededViewsContainer = newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1];
+
+			if (unneededViewsContainer.children.length == 2) {
+				unneededViewsContainer.removeChild(unneededViewsContainer.children[1]);
+			}
+
+			newVideos.push(newVideo);
+		});
 	}
 
 	var sidebarButtonIsLoaded = false;
