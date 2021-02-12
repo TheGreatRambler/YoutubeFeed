@@ -1,0 +1,3 @@
+[submodule "zaphoyd/websocketpp"]
+	path = server/lib/websocketpp
+	url = https://github.com/zaphoyd/websocketpp

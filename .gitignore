@@ -1,1 +1,4 @@
 *.xpi
+*.zip
+.vscode
+compile_commands.json
