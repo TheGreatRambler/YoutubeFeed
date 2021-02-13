@@ -10,7 +10,8 @@
 				"*://*.youtube.com/*"
 			],
 			"js": [
-				"content.js"
+				"content.js",
+				"bufferpack.js"
 			]
 		}
 	]

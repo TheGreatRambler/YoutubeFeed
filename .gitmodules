@@ -4,6 +4,3 @@
 [submodule "server/lib/asio"]
 	path = server/lib/asio
 	url = https://github.com/chriskohlhoff/asio
-[submodule "server/lib/boost_system"]
-	path = server/lib/boost_system
-	url = https://github.com/boostorg/system

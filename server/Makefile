@@ -26,7 +26,7 @@ CFLAGS := -std=c11
 CXXFLAGS := -std=gnu++17
 
 # C/C++ flags
-CPPFLAGS := -Wall -Wno-maybe-uninitialized -Wno-sign-compare -Wno-switch-enum -Wno-switch -Wno-deprecated-declarations -DKS_STR_ENCODING_NONE -I./include -I./src/third_party -fdata-sections -ffunction-sections -I./lib/websocketpp
+CPPFLAGS := -Wall -Wno-maybe-uninitialized -Wno-sign-compare -Wno-switch-enum -Wno-switch -Wno-deprecated-declarations -DKS_STR_ENCODING_NONE -DASIO_STANDALONE -I./include -I./src/third_party -fdata-sections -ffunction-sections -I./lib/asio/asio/include -I./lib/websocketpp
 
 # Linker flags
 LDFLAGS := -Wl,--gc-sections
@@ -34,6 +34,8 @@ LDFLAGS := -Wl,--gc-sections
 ifeq ($(UNAME),Msys)
 	# Needed for sockets on windows
 	LDFLAGS += -lws2_32
+else
+	LDFLAGS += -lpthread
 endif
 
 ifeq ($(BUILD),release)
