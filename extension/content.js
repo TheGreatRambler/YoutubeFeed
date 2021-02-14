@@ -1,4 +1,4 @@
-function polymerClone (element) {
+function polymerClone(element) {
 	var newElement = element.cloneNode(true);
 
 	// Copying polymer elements is difficult
@@ -23,8 +23,10 @@ document.onload = function () {
 			videosContainer = possibleContainers[0];
 		} else if (possibleContainers.length == 11) {
 			videosContainer = possibleContainers[4];
+		} else if (possibleContainers.length == 12) {
+			videosContainer = possibleContainers[8];
 		}
-		var templateVideo         = videosContainer.firstElementChild;
+		var templateVideo = videosContainer.firstElementChild;
 		var templateVerifiedBadge = document.getElementsByClassName("badge-style-type-verified")[0];
 
 		// TODO will obtain data later
@@ -54,23 +56,22 @@ document.onload = function () {
 		videosContainer.textContent = "";
 
 		videosToPresent.forEach(function (video) {
-			var newVideo = polymerClone (templateVideo);
-			
+			var newVideo = polymerClone(templateVideo);
+
 			// Add first
 			videosContainer.appendChild(newVideo);
 
-			var thumbnail = "https://img.youtube.com/vi/" + video.id + "/hqdefault.jpg";
-			var url       = "https://www.youtube.com/watch?v=" + video.id;
+			var thumbnail = "https://i.ytimg.com/vi/" + video.id + "/hqdefault_live.jpg?sqp=-o…kDDggBFQAAiEIYAXABwAEG&rs=AOn4CLAD5r2g-8ME9eC1aEfo_XWo-IMvog";
+			var url = "https://www.youtube.com/watch?v=" + video.id;
 
-			newVideo.firstElementChild.children[0].firstElementChild.href                                                                                                                                    = url;
-			newVideo.firstElementChild.children[0].firstElementChild.search                                                                                                                                  = "?v=" + video.id;
-			newVideo.firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.src                                                                                                 = thumbnail;
-			newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1]["aria-label"]                                                                                                   = video.title;
-			newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].title                                                                                                           = video.title;
-			newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].innerHTML                                                                                                       = video.title;
-			newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].href                                                                                                            = url;
+			newVideo.firstElementChild.children[0].firstElementChild.href = url;
+			newVideo.firstElementChild.children[0].firstElementChild.search = "?v=" + video.id;
+			newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1]["aria-label"] = video.title;
+			newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].title = video.title;
+			newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].innerHTML = video.title;
+			newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].href = url;
 			newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.innerHTML = video.creator;
-			newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.href      = video.creatorchannel;
+			newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.href = video.creatorchannel;
 
 			// TODO
 			//if (video.verified) {
@@ -87,27 +88,27 @@ document.onload = function () {
 				unneededViewsContainer.removeChild(unneededViewsContainer.children[1]);
 			}
 
-			newVideos.push(newVideo);
+			newVideo.firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.src = thumbnail;
 		});
 	}
 
 	var sidebarButtonIsLoaded = false;
-	var looper                = setInterval (function () {
-        var sidebarContainer = document.getElementById("section-items");
+	var looper = setInterval(function () {
+		var sidebarContainer = document.getElementById("section-items");
 
-        if (sidebarContainer) {
-            clearInterval (looper);
-            sidebarButtonIsLoaded = true;
+		if (sidebarContainer) {
+			clearInterval(looper);
+			sidebarButtonIsLoaded = true;
 
-            var newFeedElement = polymerClone (sidebarContainer.firstElementChild);
+			var newFeedElement = polymerClone(sidebarContainer.firstElementChild);
 
-            sidebarContainer.insertBefore(newFeedElement, sidebarContainer.children[1]);
+			sidebarContainer.insertBefore(newFeedElement, sidebarContainer.children[1]);
 
-            newFeedElement.firstElementChild.title = "Feed";
-            newFeedElement.firstElementChild.href  = "/feed/feed"; // TODO
+			newFeedElement.firstElementChild.title = "Feed";
+			newFeedElement.firstElementChild.href = "/feed/feed"; // TODO
 
-            newFeedElement.firstElementChild.firstElementChild.children[2].innerHTML                         = "Feed";
-            newFeedElement.firstElementChild.firstElementChild.firstElementChild.firstElementChild.outerHTML = `
+			newFeedElement.firstElementChild.firstElementChild.children[2].innerHTML = "Feed";
+			newFeedElement.firstElementChild.firstElementChild.firstElementChild.firstElementChild.outerHTML = `
 			<svg viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet" focusable="false" style="pointer-events: none; display: block; width: 100%; height: 100%;" class="style-scope yt-icon" height="100%" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" enable-background="new 0 0 200 200" xml:space="preserve">
 				<rect x="82.833" y="31.855" width="67.469" height="6.134">
 				</rect>
@@ -126,10 +127,10 @@ document.onload = function () {
 			</svg>
 				`;
 
-            newFeedElement.onclick = function () {
-                localStorage.setItem("amRedirectingToFeed", "1");
-                window.location.href = "/feed/subscriptions";
-            };
-        }
-    }, 30);
+			newFeedElement.onclick = function () {
+				localStorage.setItem("amRedirectingToFeed", "1");
+				window.location.href = "/feed/subscriptions";
+			};
+		}
+	}, 30);
 };
