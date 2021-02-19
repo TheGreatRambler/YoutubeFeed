@@ -1,3 +1,5 @@
+#include <rapidjson/document.h>
+#include <rapidjson/stringbuffer.h>
 #include <set>
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
@@ -34,6 +36,9 @@ public:
 		}
 	}
 
+	void record_channel_interaction (std::string channel_id, std::string ineraction_type, uint64_t date) {
+	}
+
 	void run (uint16_t port) {
 		m_server.listen (port);
 		m_server.start_accept ();
@@ -48,6 +53,6 @@ private:
 };
 
 int main () {
-	websocket_server server;
-	server.run (9002);
+	websocket_server feedServer;
+	feedServer.run (9002);
 }
