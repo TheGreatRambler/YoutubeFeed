@@ -26,7 +26,7 @@ document.onload = function () {
 		} else if (possibleContainers.length == 12) {
 			videosContainer = possibleContainers[8];
 		}
-		var templateVideo         = videosContainer.children[1];
+		var templateVideo         = videosContainer.firstElementChild;
 		var templateVerifiedBadge = document.getElementsByClassName("badge-style-type-verified")[0];
 
 		// TODO will obtain data later
@@ -65,7 +65,39 @@ document.onload = function () {
 
 			setTimeout (function () {
 				var thumbnail = "https://i.ytimg.com/vi/" + video.id + "/hqdefault.jpg";
-				var url       = "https://www.youtube.com/watch?v=" + video.id;
+				// They're locked behind some sort of tracking key
+				var movingThumbnail = "https://i.ytimg.com/an_webp/" + video.id + "/mqdefault_6s.webp?sqp=&rs=";
+				var url             = "https://www.youtube.com/watch?v=" + video.id;
+
+				// TODO thumbnails out of view dont render when you scroll to them
+				newVideo.__data.data.videoId                                                                        = video.id;
+				newVideo.__data.data.thumbnail.thumbnails[0]                                                        = thumbnail;
+				newVideo.__data.data.thumbnail.thumbnails[1]                                                        = thumbnail;
+				newVideo.__data.data.thumbnail.thumbnails[2]                                                        = thumbnail;
+				newVideo.__data.data.title.runs[0].text                                                             = video.title;
+				newVideo.__data.data.richThumbnail.movingThumbnailRenderer.movingThumbnailDetails.thumbnails[0].url = movingThumbnail;
+				newVideo.__data.data.navigationEndpoint.watchEndpoint.videoId                                       = video.id;
+				// TODO the video wont appear if this is set
+				//newVideo.__data.data.navigationEndpoint.watchEndpoint.commandMetadata.webCommandMetadata.url                                                                                                                             = "/watch?v=" + video.id;
+				newVideo.__data.data.thumbnailOverlays[1].thumbnailOverlayToggleButtonRenderer.toggledServiceEndpoint.playlistEditEndpoint.actions[0].removedVideoId                                                                     = video.id;
+				newVideo.__data.data.thumbnailOverlays[1].thumbnailOverlayToggleButtonRenderer.untoggledServiceEndpoint.playlistEditEndpoint.actions[0].addedVideoId                                                                     = video.id;
+				newVideo.__data.data.thumbnailOverlays[2].thumbnailOverlayToggleButtonRenderer.untoggledServiceEndpoint.signalServiceEndpoint.actions[0].addToPlaylistCommand.videoId                                                    = video.id;
+				newVideo.__data.data.thumbnailOverlays[2].thumbnailOverlayToggleButtonRenderer.untoggledServiceEndpoint.signalServiceEndpoint.actions[0].addToPlaylistCommand.videoIds                                                   = [video.id];
+				newVideo.__data.data.thumbnailOverlays[2].thumbnailOverlayToggleButtonRenderer.untoggledServiceEndpoint.signalServiceEndpoint.actions[0].addToPlaylistCommand.onCreateListCommand.createPlaylistServiceEndpoint.videoIds = [video.id];
+
+				if (video.verified) {
+					newVideo.__data.data.ownerBadges = [{
+						icon: {
+							iconType: "CHECK_CIRCLE_THICK"
+						},
+						style: "BADGE_STYLE_TYPE_VERIFIED",
+						tooltip: "Verified",
+						// TODO once again locked behind tracking
+						trackingParams: ""
+					}];
+				} else {
+					newVideo.__data.data.ownerBadges = [];
+				}
 
 				newVideo.firstElementChild.children[0].firstElementChild.href                                    = url;
 				newVideo.firstElementChild.children[0].firstElementChild.search                                  = "?v=" + video.id;
@@ -81,12 +113,9 @@ document.onload = function () {
 
 				newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.firstElementChild.firstElementChild.children[0].children[1].firstElementChild.innerHTML = "\n      \n    " + video.creator + "\n  \n    ";
 
-				// TODO
-				//if (video.verified) {
-				//	firstElementChild.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[1] = polymerClone (templateVerifiedBadge);
-				//} else {
-				//	firstElementChild.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[1].innerHTML = "";
-				//}
+				if (!video.verified) {
+					newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[1].innerHTML = "";
+				}
 
 				newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1].children[0].innerHTML = video.action + " by " + video.friends.map(item => `<a href="${item.friendchannel}">${item.friend}</a>`).join(", ");
 
@@ -96,8 +125,8 @@ document.onload = function () {
 					unneededViewsContainer.removeChild(unneededViewsContainer.children[1]);
 				}
 
-				newVideo.style.opacity = "100%"
-			}, 300);
+				newVideo.style.opacity = "100%";
+			}, 100);
 		});
 	}
 
