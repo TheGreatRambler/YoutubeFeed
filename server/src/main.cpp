@@ -1,3 +1,4 @@
+#include <cpp_redis/core/client.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <set>
@@ -31,9 +32,18 @@ public:
 	}
 
 	void on_message (connection_hdl hdl, server::message_ptr msg) {
+		rapidjson::Document document;
+		document.Parse (msg->get_payload ().c_str ());
+
 		for (auto it : m_connections) {
 			m_server.send (it, msg);
 		}
+
+		server::connection_ptr con = m_server.get_con_from_hdl (hdl);
+		msg->set_payload ("");
+		msg->set_opcode (websocketpp::frame::opcode::text);
+		msg->set_compressed (true);
+		con->send (msg);
 	}
 
 	void record_channel_interaction (std::string channel_id, std::string ineraction_type, uint64_t date) {

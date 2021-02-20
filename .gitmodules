@@ -4,3 +4,12 @@
 [submodule "server/lib/asio"]
 	path = server/lib/asio
 	url = https://github.com/chriskohlhoff/asio
+[submodule "server/lib/cppredis"]
+	path = server/lib/cppredis
+	url = https://github.com/cpp-redis/cpp_redis
+[submodule "server/lib/mongocdriver"]
+	path = server/lib/mongocdriver
+	url = https://github.com/mongodb/mongo-c-driver
+[submodule "server/lib/mongocxxdriver"]
+	path = server/lib/mongocxxdriver
+	url = https://github.com/mongodb/mongo-cxx-driver
