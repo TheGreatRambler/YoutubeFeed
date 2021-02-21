@@ -1,4 +1,11 @@
-#include <cpp_redis/core/client.hpp>
+#include <bsoncxx/builder/stream/array.hpp>
+#include <bsoncxx/builder/stream/document.hpp>
+#include <bsoncxx/builder/stream/helpers.hpp>
+#include <bsoncxx/json.hpp>
+#include <mongocxx/client.hpp>
+#include <mongocxx/instance.hpp>
+#include <mongocxx/stdx.hpp>
+#include <mongocxx/uri.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <set>
