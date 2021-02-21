@@ -26,10 +26,10 @@ CFLAGS := -std=c11
 CXXFLAGS := -std=gnu++17
 
 # C/C++ flags
-CPPFLAGS := -Wall -Wno-maybe-uninitialized -Wno-sign-compare -Wno-switch-enum -Wno-switch -Wno-deprecated-declarations -DKS_STR_ENCODING_NONE -DASIO_STANDALONE -I./include -I./src/third_party -fdata-sections -ffunction-sections -I./lib/asio/asio/include -I./lib/websocketpp -I./lib/mongocxxdriver/build/install/include
+CPPFLAGS := -Wall -Wno-maybe-uninitialized -Wno-sign-compare -Wno-switch-enum -Wno-switch -Wno-deprecated-declarations -DKS_STR_ENCODING_NONE -DASIO_STANDALONE -I./include -I./src/third_party -fdata-sections -ffunction-sections -I./lib/asio/asio/include -I./lib/websocketpp -I./lib/mongocxxdriver/build/install/include/bsoncxx/v_noabi -I./lib/mongocxxdriver/build/install/include/mongocxx/v_noabi -I./lib/mongocxxdriver/src
 
 # Linker flags
-LDFLAGS := -Wl,--gc-sections -L./lib/mongocxxdriver/build/install/lib -lbsoncxx.dll -lmongocxx.dll -lws2_32
+LDFLAGS := -Wl,--gc-sections -L./lib/mongocxxdriver/build/install/lib -lbsoncxx-static -DBSONCXX_STATIC -lmongocxx-static -DMONGOCXX_STATIC 
 
 ifeq ($(UNAME),Msys)
 	# Needed for sockets on windows
