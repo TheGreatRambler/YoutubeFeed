@@ -33,7 +33,7 @@ LDFLAGS := -Wl,--gc-sections -L./lib/mongocxxdriver/build/install/lib -lbsoncxx-
 
 ifeq ($(UNAME),Msys)
 	# Needed for sockets on windows
-	LDFLAGS += -lws2_32
+	LDFLAGS += -lws2_32 -lwsock32
 else
 	LDFLAGS += -lpthread
 endif
