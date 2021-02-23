@@ -4,12 +4,11 @@
 #include <bsoncxx/builder/stream/helpers.hpp>
 #include <bsoncxx/json.hpp>
 #include <chrono>
+#include <cstdio>
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
 #include <mongocxx/stdx.hpp>
 #include <mongocxx/uri.hpp>
-#include <rapidjson/document.h>
-#include <rapidjson/stringbuffer.h>
 #include <set>
 #include <string_view>
 #include <vector>
@@ -27,7 +26,14 @@ using websocketpp::lib::bind;
 class websocket_server {
 public:
 	websocket_server () {
-		mongodb_client       = mongocxx::client (mongocxx::uri ("mongodb://localhost:27017"));
+		mongodb_client = mongocxx::client (mongocxx::uri ("mongodb://localhost:27017"));
+
+		if (mongodb_client) {
+			puts ("Client was constructed");
+		} else {
+			puts ("Client was not constructed");
+		}
+
 		youtubefeed_database = mongodb_client["youtubefeed"];
 
 		m_server.init_asio ();
@@ -49,12 +55,7 @@ public:
 	}
 
 	void on_message (connection_hdl hdl, server::message_ptr msg) {
-		rapidjson::Document document;
-		document.Parse (msg->get_payload ().c_str ());
-
-		for (auto it : m_connections) {
-			m_server.send (it, msg);
-		}
+		puts (("Message: " + msg->get_payload ()).c_str ());
 
 		bsoncxx::document::value doc    = bsoncxx::from_json (bsoncxx::stdx::string_view (msg->get_payload ()));
 		bsoncxx::document::view docview = doc.view ();
@@ -126,20 +127,56 @@ public:
 			});
 
 			std::string result = "[";
-		}
+			int64_t i          = 0;
+			int64_t end        = std::min ((int64_t)results.size (), quantity);
+			while (true) {
+				if (i == end) {
+					result += "]";
+					break;
+				} else if (i == (end - 1)) {
+					result += bsoncxx::to_json (results[i]);
+				} else {
+					result += bsoncxx::to_json (results[i]) + ",";
+					i++;
+				}
+			}
 
-		server::connection_ptr con = m_server.get_con_from_hdl (hdl);
-		msg->set_payload ("");
-		msg->set_opcode (websocketpp::frame::opcode::text);
-		msg->set_compressed (true);
-		con->send (msg);
+			server::connection_ptr con = m_server.get_con_from_hdl (hdl);
+			msg->set_payload ("{'results':" + result + "}");
+			msg->set_opcode (websocketpp::frame::opcode::text);
+			msg->set_compressed (true);
+			con->send (msg);
+		} else if (string_flag == "add_friend") {
+			std::string user_id   = get_string_from_bson (docview["userId"]);
+			std::string friend_id = get_string_from_bson (docview["friendUserId"]);
+
+			auto add_friend_builder = bsoncxx::builder::stream::document {};
+			// clang-format off
+			bsoncxx::document::value add_friend = add_friend_builder
+				<< "userId" << friend_id
+				<< bsoncxx::builder::stream::finalize;
+			// clang-format on
+
+			mongocxx::collection user_friends = youtubefeed_database["friends_" + user_id];
+			auto result                       = user_friends.insert_one (add_friend.view ());
+		} else if (string_flag == "remove_friend") {
+			std::string user_id   = get_string_from_bson (docview["userId"]);
+			std::string friend_id = get_string_from_bson (docview["friendUserId"]);
+
+			auto remove_friend_builder = bsoncxx::builder::stream::document {};
+			// clang-format off
+			bsoncxx::document::value remove_friend = remove_friend_builder
+				<< "userId" << friend_id
+				<< bsoncxx::builder::stream::finalize;
+			// clang-format on
+
+			mongocxx::collection user_friends = youtubefeed_database["friends_" + user_id];
+			auto result                       = user_friends.delete_one (remove_friend.view ());
+		}
 	}
 
 	static std::string get_string_from_bson (bsoncxx::document::element element) {
-		return element.get_value ().get_utf8 ().value.to_string ();
-	}
-
-	void record_channel_interaction (std::string channel_id, std::string ineraction_type, uint64_t date) {
+		return element.get_utf8 ().value.to_string ();
 	}
 
 	void run (uint16_t port) {
@@ -161,5 +198,7 @@ private:
 
 int main () {
 	websocket_server feedServer;
+
+	puts ("Starting websocket server");
 	feedServer.run (9002);
 }
