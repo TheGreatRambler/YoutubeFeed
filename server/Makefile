@@ -30,13 +30,13 @@ CPPFLAGS := -Wall -Wno-maybe-uninitialized -Wno-sign-compare -Wno-switch-enum -W
 
 # Linker flags
 # $(eval PKG_CONFIG_PATH=./lib/mongocdriver/cmake-build/cmake_build/lib/pkgconfig:./lib/mongocxxdriver/build/install/lib/pkgconfig pkg-config libmongocxx-static libbsoncxx-static --libs)
-LDFLAGS := -Wl,--gc-sections -L./lib/mongocdriver/cmake-build/cmake_build/lib -LC:/msys2/mingw64/lib -L./lib/mongocdriver/cmake-build/cmake_build/lib -L./lib/mongocxxdriver/build/install/lib -lmongocxx-static -lmongoc-static-1.0 -lDnsapi -lz -lzstd -licuuc -licuucd -lbsoncxx-static -lbson-static-1.0
+LDFLAGS := -Wl,--gc-sections -L./lib/mongocdriver/cmake-build/cmake_build/lib -LC:/msys2/mingw64/lib -L./lib/mongocdriver/cmake-build/cmake_build/lib -L./lib/mongocxxdriver/build/install/lib -lmongocxx-static -lmongoc-static-1.0 -lz -lzstd -licuuc -lbsoncxx-static -lbson-static-1.0
 
 ifeq ($(UNAME),Msys)
 	# Needed for sockets on windows
-	LDFLAGS += -lws2_32 -lwsock32 -lsecur32 -lcrypt32 -lShlwapi -lsecur32 -lcrypt32 -lBcrypt
+	LDFLAGS += -lws2_32 -lwsock32 -lDnsapi -lsecur32 -lcrypt32 -lShlwapi -lsecur32 -lcrypt32 -lBcrypt -licuucd
 else
-	LDFLAGS += -lpthread
+	LDFLAGS += -lpthread -lssl -lcrypto -lrt -lresolv
 endif
 
 ifeq ($(BUILD),release)

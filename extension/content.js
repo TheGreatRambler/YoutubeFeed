@@ -171,6 +171,17 @@ document.onload = function () {
 		}
 	}
 
+	if (window.location.href.includes("youtube.com/channel")) {
+		var subscribeButtonContainer = document.getElementsByTagName("ytd-subscribe-button-renderer")[1];
+
+		var newSubscribeButton = polymerClone(subscribeButtonContainer.firstElementChild);
+
+		subscribeButtonContainer.appendChild(newSubscribeButton);
+
+		newSubscribeButton.__data._boundKeyHandlers.length = 0;
+		newSubscribeButton.innerText = "FOLLOW";
+	}
+
 	if (window.location.href.includes("youtube.com")) {
 		// Sidebar
 		var sidebarButtonIsLoaded = false;
