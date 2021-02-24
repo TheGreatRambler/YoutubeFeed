@@ -1,3 +1,5 @@
+var ws = new WebSocket ("ws://localhosttester.com:9002");
+
 function polymerClone (element) {
 	var newElement = element.cloneNode(true);
 
@@ -9,7 +11,37 @@ function polymerClone (element) {
 	return newElement;
 }
 
+function sendChannelList () {
+	document.getElementsByTagName("yt-guide-manager")[0].fetchGuideData().then(function (subscriptions) {
+		var channels = [];
+		//var startingContainer = document.getElementsByTagName("ytd-guide-section-renderer")[1];
+		var startingContainer = subscriptions.items[1].guideSubscriptionsSectionRenderer;
+		startingContainer.items.concat(startingContainer.items[7].guideCollapsibleEntryRenderer.expandableItems).forEach(function (item) {
+			if (item.guideEntryRenderer && item.guideEntryRenderer.entryData) {
+				channels.push({
+					id: item.guideEntryRenderer.entryData.guideEntryData.guideEntryId,
+					name: item.guideEntryRenderer.formattedTitle.simpleText
+				});
+			}
+		});
+
+		ws.send(JSON.serialize({
+			flag: "SendSubscriptions",
+			data: channels
+		}));
+	});
+}
+
+//document.getElementsByTagName("ytd-topbar-menu-button-renderer")[2].onTap()
+
+ws.onmessage = function (event) {
+	var msg = JSON.parse(event.data);
+};
+
 document.onload = function () {
+	// For now
+	var serverIp = "localhosttester.com";
+
 	var amRedirectingToFeed = localStorage.getItem("amRedirectingToFeed");
 	if (window.location.href.includes("youtube.com/feed/subscriptions") && amRedirectingToFeed == "1") {
 		// Pretend feed was opened
@@ -159,6 +191,7 @@ document.onload = function () {
 		likeButton.onclick = function () {
 			if (likeButton.__data.data.isToggled) {
 				// Video was liked
+				// window.ytplayer.config.args
 			}
 		}
 
@@ -167,19 +200,27 @@ document.onload = function () {
 		watchlistCheckbox.onclick = function () {
 			if (watchlistCheckbox.__data.checked) {
 				// Video was added to watchlist
+				// window.ytplayer.config.args
 			}
 		}
 	}
 
 	if (window.location.href.includes("youtube.com/channel")) {
-		var subscribeButtonContainer = document.getElementsByTagName("ytd-subscribe-button-renderer")[1];
+		var possibleButtons          = document.getElementsByTagName("ytd-subscribe-button-renderer");
+		var subscribeButtonContainer = possibleButtons[possibleButtons.length - 1];
 
-		var newSubscribeButton = polymerClone(subscribeButtonContainer.firstElementChild);
+		var newSubscribeButton = document.createElement("ytd-subscribe-button-renderer");
 
-		subscribeButtonContainer.appendChild(newSubscribeButton);
+		subscribeButtonContainer.parentElement.appendChild(newSubscribeButton);
 
-		newSubscribeButton.__data._boundKeyHandlers.length = 0;
-		newSubscribeButton.innerText = "FOLLOW";
+		var alreadyFollowed = true;
+
+		newSubscribeButton.__data.buttonAccessibility                      = "Follow this channel";
+		newSubscribeButton.firstElementChild.firstElementChild.innerText   = "FOLLOW";
+		newSubscribeButton.__data.data.unsubscribedButtonText.runs[0].text = "Unfollow";
+		newSubscribeButton.__data.data.unsubscribedButtonText.runs[0].text = "";
+
+		document.getElementsByTagName("ytd-guide-section-renderer")[1].__data.data.items.concat(document.getElementsByTagName("ytd-guide-section-renderer")[1].children[1].children[7].__data.data.expandableItems)
 	}
 
 	if (window.location.href.includes("youtube.com")) {
@@ -215,5 +256,8 @@ document.onload = function () {
 					`;
             }
         }, 30);
+
+		// Always send channel list on boot
+		sendChannelList ();
 	}
 };
