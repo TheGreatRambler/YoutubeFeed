@@ -194,7 +194,51 @@ document.onload = function () {
 				// Video was added to watchlist
 				// window.ytplayer.config.args
 			}
-		}
+		};
+
+		// Used to obtain watchtime and therefore to determine when it's a watch
+		window.OriginalImage
+			= window.Image;
+		window.Image = function () {
+			this.innerImage = new window.OriginalImage();
+		};
+
+		Object.defineProperty(window.Image.prototype, "src", {
+			get: function () {
+				return this.innerImage.src;
+			},
+			set: function (source) {
+				// Have obtained URL
+				if (source.includes("api/stats/watchtime")) {
+					var timestamp = parseFloat (source.substring(source.indexOf("&et=") + 4));
+					if (timestamp > 30) {
+						// This is a watch
+
+						//https://www.youtube.com/api/stats/watchtime?ns=yt&el=detailpage&cpn=dehTX05RenldyQmL&docid=6Bx1IKQ1btY&ver=2&cmt=23.118&ei=l7g5YMexDMK98gSIjYX4DA&fmt=398&fs=0&rt=226.007&of=pshXHcUFhxbFIBkvccROHA&euri=&lact=12663&cl=359382323&state=playing&vm=CAEQARgEKiAzcjBRQ25ia05ENWVfeEdkOVlhY1NpRW9udFdZZ21uQjoyQU9HdF9PTFI4c1lhNlRQSnRnMGk5SzlheWpvdDdsNW84WU5MZGVjUThzQzJ1TF9pa3c&volume=100&subscribed=1&cbr=Firefox&cbrver=85.0&c=WEB&cver=2.20210224.06.00&cplayer=UNIPLAYER&cos=Windows&cosver=10.0&cplatform=DESKTOP&hl=en_US&cr=US&uga=m18&len=378.101&rtn=247&afmt=251&idpj=-7&ldpj=-26&rti=226&muted=0&st=13.085&et=23.118
+					}
+					console.log(timestamp);
+				}
+				this.innerImage.src = source;
+			}
+		});
+
+		Object.defineProperty(window.Image.prototype, "onload", {
+			get: function () {
+				return this.innerImage.onload;
+			},
+			set: function (source) {
+				this.innerImage.onload = source;
+			}
+		});
+
+		Object.defineProperty(window.Image.prototype, "onerror", {
+			get: function () {
+				return this.innerImage.onerror;
+			},
+			set: function (source) {
+				this.innerImage.onerror = source;
+			}
+		});
 	}
 
 	if (window.location.href.includes("youtube.com/channel")) {
@@ -265,14 +309,12 @@ document.onload = function () {
 		}, 500);
 
 		// Notice every watchlist modification
+		// The same 6 elements are moved around to service every video, so this needs to be applied every time one is found
 		setInterval (function () {
 			Array.from(document.getElementsByTagName("ytd-thumbnail-overlay-toggle-button-renderer")).forEach(function (item) {
 				if (item.__data.data.untoggledTooltip == "Watch later") {
-					var id = item.__data.data.toggledServiceEndpoint.playlistEditEndpoint.actions[0].removedVideoId;
-
-					console.log(id);
-
 					item.children[1].onclick = function () {
+						var id = item.__data.data.toggledServiceEndpoint.playlistEditEndpoint.actions[0].removedVideoId;
 						if (item.__data.toggled) {
 							console.log("ID " + id + " is enabled");
 						} else {
