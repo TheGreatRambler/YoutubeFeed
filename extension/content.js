@@ -12,6 +12,17 @@ function polymerClone (element) {
 	return newElement;
 }
 
+function obtainFormattedLength (timestamp) {
+	var hours   = Math.floor(timestamp / 60 / 60);
+	var minutes = Math.floor(timestamp / 60) - (hours * 60);
+	var seconds = timestamp % 60;
+
+	var result = (hours == 0 ? "" : hours + ":");
+	result += minutes + ":" + seconds;
+
+	return result;
+}
+
 function sendChannelList () {
 	document.getElementsByTagName("yt-guide-manager")[0].fetchGuideData().then(function (subscriptions) {
 		var channels = [];
@@ -178,23 +189,60 @@ document.onload = function () {
 	}
 
 	if (window.location.href.includes("youtube.com/watch?")) {
+		var videoDetails = document.getElementsByTagName("ytd-page-manager")[0].__data.data.playerResponse.videoDetails;
+		var isVerified   = document.getElementsByTagName("ytd-video-owner-renderer")[0].children[1].firstElementChild.children[1].children.length == 2;
+
 		// Listen for watch, like or watchlist
 		var likeButton     = document.getElementsByTagName("ytd-toggle-button-renderer")[0];
 		likeButton.onclick = function () {
 			if (likeButton.__data.data.isToggled) {
 				// Video was liked
-				// window.ytplayer.config.args
+				var data = {
+					flag: "new_interaction",
+					userId: userChannelId,
+					id: videoDetails.videoId,
+					title: videoDetails.title,
+					length: obtainFormattedLength (Number.parseInt(videoDetails.lengthSeconds)),
+					creator: videoDetails.author,
+					creatorId: videoDetails.channelId,
+					verified: isVerified,
+					dateAdded: Date.now(),
+					action: "Liked"
+				};
+
+				ws.send(JSON.serialize(data));
 			}
 		}
 
-		var watchlistCheckbox
-			= document.getElementsByTagName("tp-yt-paper-checkbox")[0];
-		watchlistCheckbox.onclick = function () {
-			if (watchlistCheckbox.__data.checked) {
-				// Video was added to watchlist
-				// window.ytplayer.config.args
-			}
-		};
+		var looper
+			= setInterval (function () {
+				  var watchlistCheckbox
+					  = document.getElementsByTagName("tp-yt-paper-checkbox")[0];
+
+				  if (watchlistCheckbox) {
+					  clearInterval (looper);
+
+					  watchlistCheckbox.onclick = function () {
+						  if (watchlistCheckbox.__data.checked) {
+							  // Video was added to watchlist
+							  var data = {
+								  flag: "new_interaction",
+								  userId: userChannelId,
+								  id: videoDetails.videoId,
+								  title: videoDetails.title,
+								  length: obtainFormattedLength (Number.parseInt(videoDetails.lengthSeconds)),
+								  creator: videoDetails.author,
+								  creatorId: videoDetails.channelId,
+								  verified: isVerified,
+								  dateAdded: Date.now(),
+								  action: "Added to watchlist"
+							  };
+
+							  ws.send(JSON.serialize(data));
+						  }
+					  };
+				  }
+			  }, 50);
 
 		// Used to obtain watchtime and therefore to determine when it's a watch
 		window.OriginalImage
@@ -213,10 +261,21 @@ document.onload = function () {
 					var timestamp = parseFloat (source.substring(source.indexOf("&et=") + 4));
 					if (timestamp > 30) {
 						// This is a watch
+						var data = {
+							flag: "new_interaction",
+							userId: userChannelId,
+							id: videoDetails.videoId,
+							title: videoDetails.title,
+							length: obtainFormattedLength (Number.parseInt(videoDetails.lengthSeconds)),
+							creator: videoDetails.author,
+							creatorId: videoDetails.channelId,
+							verified: isVerified,
+							dateAdded: Date.now(),
+							action: "Watched"
+						};
 
-						//https://www.youtube.com/api/stats/watchtime?ns=yt&el=detailpage&cpn=dehTX05RenldyQmL&docid=6Bx1IKQ1btY&ver=2&cmt=23.118&ei=l7g5YMexDMK98gSIjYX4DA&fmt=398&fs=0&rt=226.007&of=pshXHcUFhxbFIBkvccROHA&euri=&lact=12663&cl=359382323&state=playing&vm=CAEQARgEKiAzcjBRQ25ia05ENWVfeEdkOVlhY1NpRW9udFdZZ21uQjoyQU9HdF9PTFI4c1lhNlRQSnRnMGk5SzlheWpvdDdsNW84WU5MZGVjUThzQzJ1TF9pa3c&volume=100&subscribed=1&cbr=Firefox&cbrver=85.0&c=WEB&cver=2.20210224.06.00&cplayer=UNIPLAYER&cos=Windows&cosver=10.0&cplatform=DESKTOP&hl=en_US&cr=US&uga=m18&len=378.101&rtn=247&afmt=251&idpj=-7&ldpj=-26&rti=226&muted=0&st=13.085&et=23.118
+						ws.send(JSON.serialize(data));
 					}
-					console.log(timestamp);
 				}
 				this.innerImage.src = source;
 			}
@@ -242,6 +301,8 @@ document.onload = function () {
 	}
 
 	if (window.location.href.includes("youtube.com/channel")) {
+		// TODO add a follower system instead of by subscriptions
+		/*
 		var possibleButtons          = document.getElementsByTagName("ytd-subscribe-button-renderer");
 		var subscribeButtonContainer = possibleButtons[possibleButtons.length - 1];
 
@@ -257,6 +318,7 @@ document.onload = function () {
 		newSubscribeButton.__data.data.unsubscribedButtonText.runs[0].text = "";
 
 		document.getElementsByTagName("ytd-guide-section-renderer")[1].__data.data.items.concat(document.getElementsByTagName("ytd-guide-section-renderer")[1].children[1].children[7].__data.data.expandableItems)
+		*/
 	}
 
 	if (window.location.href.includes("youtube.com")) {
@@ -294,19 +356,22 @@ document.onload = function () {
         }, 30);
 
 		// Obtain this user's channel ID
-		document.getElementsByTagName("ytd-popup-container")[0].style.opacity = "0%";
-		document.getElementsByTagName("ytd-topbar-menu-button-renderer")[2].onTap();
 		setTimeout (function () {
-			userChannelId = document.getElementsByTagName("ytd-popup-container")[0].firstElementChild.firstElementChild.firstElementChild.children[2].firstElementChild.firstElementChild.children[1].firstElementChild.__data.data.navigationEndpoint.browseEndpoint.browseId;
-
-			// Always send channel list on boot
-			sendChannelList ();
-
+			document.getElementsByTagName("ytd-popup-container")[0].style.opacity = "0%";
+			var possibleProfileButtons                                            = document.getElementsByTagName("ytd-topbar-menu-button-renderer");
+			possibleProfileButtons[possibleProfileButtons.length - 1].onTap();
 			setTimeout (function () {
-				document.getElementsByTagName("ytd-topbar-menu-button-renderer")[2].onTap();
-				document.getElementsByTagName("ytd-popup-container")[0].style.opacity = "100%";
+				userChannelId = document.getElementsByTagName("iron-dropdown")[0].firstElementChild.firstElementChild.children[2].firstElementChild.firstElementChild.children[1].firstElementChild.__data.data.navigationEndpoint.browseEndpoint.browseId;
+
+				setTimeout (function () {
+					document.getElementsByTagName("ytd-topbar-menu-button-renderer")[2].onTap();
+					document.getElementsByTagName("ytd-popup-container")[0].style.opacity = "100%";
+				}, 1000);
 			}, 500);
-		}, 500);
+		}, 2000);
+
+		// Always send channel list on boot
+		sendChannelList ();
 
 		// Notice every watchlist modification
 		// The same 6 elements are moved around to service every video, so this needs to be applied every time one is found
@@ -314,11 +379,24 @@ document.onload = function () {
 			Array.from(document.getElementsByTagName("ytd-thumbnail-overlay-toggle-button-renderer")).forEach(function (item) {
 				if (item.__data.data.untoggledTooltip == "Watch later") {
 					item.children[1].onclick = function () {
-						var id = item.__data.data.toggledServiceEndpoint.playlistEditEndpoint.actions[0].removedVideoId;
+						var video = item.parentElement.parentElement.__dataHost.__data.data;
 						if (item.__data.toggled) {
-							console.log("ID " + id + " is enabled");
+							var data = {
+								flag: "new_interaction",
+								userId: userChannelId,
+								id: video.videoId,
+								title: video.title.simpleText,
+								length: video.lengthText.simpleText,
+								creator: video.longBylineText.runs[0].text,
+								creatorId: video.longBylineText.runs[0].navigationEndpoint.browseEndpoint.browseId,
+								verified: video.ownerBadges ? true : false,
+								dateAdded: Date.now(),
+								action: "Added to watchlist"
+							};
+
+							ws.send(JSON.serialize(data));
 						} else {
-							console.log("ID " + id + " is disabled");
+							// Removed
 						}
 					}
 				}
