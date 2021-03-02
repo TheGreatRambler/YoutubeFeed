@@ -26,11 +26,11 @@ CFLAGS := -std=c11
 CXXFLAGS := -std=gnu++17
 
 # C/C++ flags
-CPPFLAGS := -Wall -Wno-maybe-uninitialized -Wno-sign-compare -Wno-switch-enum -Wno-switch -Wno-deprecated-declarations -DASIO_STANDALONE -I./include -I./src/third_party -fdata-sections -ffunction-sections -I./lib/asio/asio/include -I./lib/websocketpp -I./lib/mongocxxdriver/build/install/include/bsoncxx/v_noabi -I./lib/mongocxxdriver/build/install/include/mongocxx/v_noabi -I./lib/mongocxxdriver/src
+CPPFLAGS := -Wall -Wno-maybe-uninitialized -Wno-sign-compare -Wno-switch-enum -Wno-switch -Wno-deprecated-declarations -DASIO_STANDALONE -I./include -I./src/third_party -fdata-sections -ffunction-sections $(shell pkg-config --cflags openssl) -I./lib/asio/asio/include -I./lib/websocketpp -I./lib/mongocxxdriver/build/install/include/bsoncxx/v_noabi -I./lib/mongocxxdriver/build/install/include/mongocxx/v_noabi -I./lib/mongocxxdriver/src
 
 # Linker flags
 # $(eval PKG_CONFIG_PATH=./lib/mongocdriver/cmake-build/cmake_build/lib/pkgconfig:./lib/mongocxxdriver/build/install/lib/pkgconfig pkg-config libmongocxx-static libbsoncxx-static --libs)
-LDFLAGS := -Wl,--gc-sections -L./lib/mongocdriver/cmake-build/cmake_build/lib -LC:/msys2/mingw64/lib -L./lib/mongocdriver/cmake-build/cmake_build/lib -L./lib/mongocxxdriver/build/install/lib -lmongocxx-static -lmongoc-static-1.0 -lz -lzstd -licuuc -lbsoncxx-static -lbson-static-1.0
+LDFLAGS := -Wl,--gc-sections $(shell pkg-config --libs openssl) -L./lib/mongocdriver/cmake-build/cmake_build/lib -L./lib/mongocdriver/cmake-build/cmake_build/lib -L./lib/mongocxxdriver/build/install/lib -lmongocxx-static -lmongoc-static-1.0 -lz -lzstd -licuuc -lbsoncxx-static -lbson-static-1.0
 
 ifeq ($(UNAME),Msys)
 	# Needed for sockets on windows

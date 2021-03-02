@@ -16,3 +16,9 @@ cmake -G "Unix Makefiles" .. -DCMAKE_BUILD_TYPE=Release -Dlibbson-static-1.0_DIR
 make
 make install
 cd ../../../../
+
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    sudo apt-get install libssl-dev
+else
+    pacman -S mingw-w64-x86_64-openssl
+fi

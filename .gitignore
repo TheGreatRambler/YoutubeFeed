@@ -4,3 +4,4 @@
 compile_commands.json
 server/bin
 mongodDB
+server/ssl
