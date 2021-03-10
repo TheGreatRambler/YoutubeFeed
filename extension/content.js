@@ -104,12 +104,11 @@ function codeToLoad () {
 			var possibleProfileButtons                                            = document.getElementsByTagName("ytd-topbar-menu-button-renderer");
 			possibleProfileButtons[possibleProfileButtons.length - 1].onTap();
 
-			var parent  = document.getElementsByTagName("iron-dropdown")[0].firstElementChild.firstElementChild.children[2].firstElementChild;
 			var looper2 = setInterval (function () {
-				if (parent.firstElementChild) {
+				if (document.getElementsByTagName("ytd-compact-link-renderer").length != 0) {
 					clearInterval (looper2);
 
-					userChannelId = parent.firstElementChild.children[1].firstElementChild.__data.data.navigationEndpoint.browseEndpoint.browseId;
+					userChannelId = document.getElementsByTagName("ytd-compact-link-renderer")[0].__data.data.navigationEndpoint.browseEndpoint.browseId
 					// Always send channel list on boot
 					sendChannelList ();
 
@@ -133,7 +132,7 @@ function codeToLoad () {
 								flag: "new_interaction",
 								userId: userChannelId,
 								id: video.videoId,
-								title: video.title.simpleText,
+								title: video.title.runs[0].text,
 								length: video.lengthText.simpleText,
 								creator: video.longBylineText.runs[0].text,
 								creatorId: video.longBylineText.runs[0].navigationEndpoint.browseEndpoint.browseId,
