@@ -43,7 +43,7 @@ function codeToLoad () {
 			});
 
 			var data = {
-				flag: "SendSubscriptions",
+				flag: "send_subscriptions",
 				userId: userChannelId,
 				data: channels
 			};
