@@ -19,6 +19,8 @@ cd ../../../../
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     sudo apt-get install libssl-dev
+    sudo apt-get install libfmt-dev
 else
     pacman -S mingw-w64-x86_64-openssl
+    pacman -S mingw-w64-x86_64-fmt
 fi

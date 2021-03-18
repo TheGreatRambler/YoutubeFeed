@@ -5,6 +5,8 @@
 #include <bsoncxx/json.hpp>
 #include <chrono>
 #include <cstdio>
+#include <fmt/core.h>
+#include <fmt/format.h>
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
 #include <mongocxx/stdx.hpp>
@@ -87,12 +89,16 @@ public:
 				<< bsoncxx::builder::stream::finalize;
 			// clang-format on
 
+			puts (fmt::format ("Add interaction {} from user {}", get_string_from_bson (docview["action"]), user_id).c_str ());
+
 			mongocxx::collection user_interactions = youtubefeed_database["interactions_" + user_id];
 
 			// Check if indices is empty
 			if (user_interactions.list_indexes ().begin () == user_interactions.list_indexes ().end ()) {
 				// Add week long expire time
 				// https://docs.mongodb.com/manual/tutorial/expire-data/
+				puts (fmt::format ("Creating indice for interactions_{}\n", user_id).c_str ());
+
 				using days                      = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
 				bsoncxx::document::value index  = bsoncxx::builder::stream::document {} << "createdAt" << 1 << bsoncxx::builder::stream::finalize;
 				bsoncxx::document::value expire = bsoncxx::builder::stream::document {} << "expireAfterSeconds" << std::chrono::duration_cast<std::chrono::seconds> (days (7)).count () << bsoncxx::builder::stream::finalize;
@@ -101,6 +107,29 @@ public:
 			}
 
 			auto result = user_interactions.insert_one (incoming_interaction.view ());
+
+			puts (fmt::format ("{} documents were added\n", result.value ().result ().inserted_count ()).c_str ());
+
+			std::vector<bsoncxx::document::view> results;
+
+			auto all_interactions = user_interactions.find ({});
+			for (auto&& f : friends_cursor) {
+				std::string friend_id = get_string_from_bson (f["userId"]);
+
+				// TODO consider putting all interactions in the same collection
+				mongocxx::options::find opts;
+				// Sort descending
+				opts.sort (make_document (kvp ("dateAdded", -1)));
+				// Limit results
+				opts.limit (quantity);
+				// Find elements older than the supplied date
+				auto cursor = youtubefeed_database["interactions_" + friend_id].find (
+					make_document (kvp ("dateAdded", make_document (kvp ("$lt", older_than)))), opts);
+
+				for (auto& interaction : cursor) {
+					results.push_back (interaction);
+				}
+			}
 		} else if (string_flag == "request_entries") {
 			int64_t older_than = docview["olderThan"].get_int64 ().value;
 			int64_t quantity   = docview["quantity"].get_int64 ().value;
@@ -185,8 +214,8 @@ public:
 	context_ptr on_tls_init (tls_mode mode, websocketpp::connection_hdl hdl) {
 		namespace asio = websocketpp::lib::asio;
 
-		std::cout << "on_tls_init called with hdl: " << hdl.lock ().get () << std::endl;
-		std::cout << "using TLS mode: " << (mode == MOZILLA_MODERN ? "Mozilla Modern" : "Mozilla Intermediate") << std::endl;
+		puts (fmt::format ("on_tls_init called with hdl: {}\n", hdl.lock ().get ()).c_str ());
+		puts (fmt::format ("Using TLS mode: {}\n", (mode == MOZILLA_MODERN ? "Mozilla Modern" : "Mozilla Intermediate")).c_str ());
 
 		context_ptr ctx = websocketpp::lib::make_shared<asio::ssl::context> (asio::ssl::context::sslv23);
 
@@ -216,10 +245,10 @@ public:
 			}
 
 			if (SSL_CTX_set_cipher_list (ctx->native_handle (), ciphers.c_str ()) != 1) {
-				std::cout << "Error setting cipher list" << std::endl;
+				puts ("Error setting cipher list\n");
 			}
 		} catch (std::exception& e) {
-			std::cout << "Exception: " << e.what () << std::endl;
+			puts (fmt::format ("Websocket encryption exception: {}\n", e.what ()).c_str ());
 		}
 		return ctx;
 	}
@@ -252,6 +281,6 @@ private:
 int main () {
 	websocket_server feedServer;
 
-	puts ("Starting websocket server");
+	puts ("Starting websocket server\n");
 	feedServer.run (9002);
 }
