@@ -1,6 +1,7 @@
 function codeToLoad () {
 	var ws = new WebSocket ("wss://localhosttester.com:9002");
 	var userChannelId;
+	var userChannelName;
 
 	// For testing
 	window.YOUTUBE_FEED_LOADED = true;
@@ -54,10 +55,6 @@ function codeToLoad () {
 		});
 	}
 
-	ws.onmessage = function (event) {
-		var msg = JSON.parse(event.data);
-	};
-
 	function start () {
 		// For now
 		var serverIp = "localhosttester.com";
@@ -108,17 +105,18 @@ function codeToLoad () {
 				if (document.getElementsByTagName("ytd-compact-link-renderer").length != 0) {
 					clearInterval (looper2);
 
-					userChannelId = document.getElementsByTagName("ytd-compact-link-renderer")[0].__data.data.navigationEndpoint.browseEndpoint.browseId
+					userChannelId   = document.getElementsByTagName("ytd-compact-link-renderer")[0].__data.data.navigationEndpoint.browseEndpoint.browseId;
+					userChannelName = document.getElementById("account-name").innerText;
 					// Always send channel list on boot
 					sendChannelList ();
 
 					setTimeout (function () {
 						document.getElementsByTagName("ytd-topbar-menu-button-renderer")[2].onTap();
 						document.getElementsByTagName("ytd-popup-container")[0].style.opacity = "100%";
-					}, 2000);
+					}, 500);
 				}
 			}, 1000);
-		}, 2000);
+		}, 8000);
 
 		// Notice every watchlist modification
 		// The same 6 elements are moved around to service every video, so this needs to be applied every time one is found
@@ -131,9 +129,10 @@ function codeToLoad () {
 							var data = {
 								flag: "new_interaction",
 								userId: userChannelId,
+								user: userChannelName,
 								id: video.videoId,
-								title: video.title.runs[0].text,
-								length: video.lengthText.simpleText,
+								title: video.title.runs ? video.title.runs[0].text : video.title.simpleText,
+								length: video.lengthText ? video.lengthText.simpleText : video.thumbnailOverlays[0].thumbnailOverlayTimeStatusRenderer.text.simpleText,
 								creator: video.longBylineText.runs[0].text,
 								creatorId: video.longBylineText.runs[0].navigationEndpoint.browseEndpoint.browseId,
 								verified: video.ownerBadges ? true : false,
@@ -152,6 +151,71 @@ function codeToLoad () {
 			})
 		}, 50);
 
+		// Watched videos, so there aren't repeats
+		var watchedVideos = {};
+
+		// Used to obtain watchtime and therefore to determine when it's a watch
+		// Handled outside of the URL handling because Javascript references are difficult
+		window.OriginalImage = window.Image;
+		delete window.Image;
+		window.Image = function () {
+			this.innerImage = new window.OriginalImage();
+		};
+
+		Object.defineProperty(window.Image.prototype, "src", {
+			get: function () {
+				return this.innerImage.src;
+			},
+			set: function (source) {
+				// Have obtained URL
+				if (source.includes("api/stats/watchtime")) {
+					console.log(source);
+
+					var timestamp = parseFloat (source.substring(source.indexOf("&et=") + 4));
+					if (timestamp > 30 && !watchedVideos[videoDetails.videoId]) {
+						// This is a watch
+						watchedVideos[videoDetails.videoId] = true;
+						var data                            = {
+                            flag: "new_interaction",
+                            userId: userChannelId,
+                            user: userChannelName,
+                            id: videoDetails.videoId,
+                            title: videoDetails.title,
+                            length: obtainFormattedLength (Number.parseInt(videoDetails.lengthSeconds)),
+                            creator: videoDetails.author,
+                            creatorId: videoDetails.channelId,
+                            verified: isVerified,
+                            dateAdded: Date.now(),
+                            action: "Watched"
+						};
+
+						console.log(data);
+
+						ws.send(JSON.stringify(data));
+					}
+				}
+				this.innerImage.src = source;
+			}
+		});
+
+		Object.defineProperty(window.Image.prototype, "onload", {
+			get: function () {
+				return this.innerImage.onload;
+			},
+			set: function (source) {
+				this.innerImage.onload = source;
+			}
+		});
+
+		Object.defineProperty(window.Image.prototype, "onerror", {
+			get: function () {
+				return this.innerImage.onerror;
+			},
+			set: function (source) {
+				this.innerImage.onerror = source;
+			}
+		});
+
 		var oldLocation = "";
 		setInterval (function () {
 			// In this instance, ignore
@@ -161,6 +225,7 @@ function codeToLoad () {
 			//}
 
 			if (oldLocation != window.location.href) {
+				console.log("Detect page change: ", oldLocation, window.location.href);
 				oldLocation = window.location.href;
 
 				console.log("Starting YouTubeFeed on " + window.location.href);
@@ -199,6 +264,7 @@ function codeToLoad () {
 
 						// TODO will obtain data later
 						// Video ids
+						/*
 						var videosToPresent = [{
 							id: "dHsj51Db1Ec",
 							title: "phone minecraft",
@@ -221,85 +287,146 @@ function codeToLoad () {
 							// Date and views are essentially impossible to obtain without an API key
 							// As such, they are ignored
 						}];
+						*/
 
-						videosContainer.textContent = "";
+						var looper1 = setInterval (function () {
+							// User channel ID needs to exist first
+							if (userChannelId) {
+								clearInterval (looper1);
 
-						videosToPresent.forEach(function (video) {
-							console.log("Pasting video: ", video);
+								var data = {
+									flag: "request_entries",
+									olderThan: Date.now(),
+									quantity: 30,
+									userId: userChannelId
+								};
 
-							var newVideo = polymerClone (templateVideo);
+								console.log(data);
 
-							newVideo.style.opacity = "0%";
+								ws.send(JSON.stringify(data));
 
-							videosContainer.appendChild(newVideo);
+								var videosToPresent = [];
 
-							setTimeout (function () {
-								var thumbnail = "https://i.ytimg.com/vi/" + video.id + "/hqdefault.jpg";
-								// They're locked behind some sort of tracking key
-								var movingThumbnail = "https://i.ytimg.com/an_webp/" + video.id + "/mqdefault_6s.webp?sqp=&rs=";
-								var url             = "https://www.youtube.com/watch?v=" + video.id;
+								ws.addEventListener("message", function (event) {
+									var flag = event.data.flag;
 
-								console.log(newVideo);
+									// Only run once
+									if (flag == "recieve_entries" && videosToPresent.length == 0) {
+										console.log(event.data);
 
-								// TODO thumbnails out of view dont render when you scroll to them
-								newVideo.__data.data.videoId                                                                        = video.id;
-								newVideo.__data.data.thumbnail.thumbnails[0]                                                        = thumbnail;
-								newVideo.__data.data.thumbnail.thumbnails[1]                                                        = thumbnail;
-								newVideo.__data.data.thumbnail.thumbnails[2]                                                        = thumbnail;
-								newVideo.__data.data.title.runs[0].text                                                             = video.title;
-								newVideo.__data.data.richThumbnail.movingThumbnailRenderer.movingThumbnailDetails.thumbnails[0].url = movingThumbnail;
-								newVideo.__data.data.navigationEndpoint.watchEndpoint.videoId                                       = video.id;
-								// TODO the video wont appear if this is set
-								//newVideo.__data.data.navigationEndpoint.watchEndpoint.commandMetadata.webCommandMetadata.url = "/watch?v=" + video.id;
-								newVideo.__data.data.thumbnailOverlays[1].thumbnailOverlayToggleButtonRenderer.toggledServiceEndpoint.playlistEditEndpoint.actions[0].removedVideoId = video.id;
+										var alreadyAddedVideos = {};
 
-								newVideo.__data.data.thumbnailOverlays[2].thumbnailOverlayToggleButtonRenderer.untoggledServiceEndpoint.signalServiceEndpoint.actions[0].addToPlaylistCommand.videoId                                                    = video.id;
-								newVideo.__data.data.thumbnailOverlays[2].thumbnailOverlayToggleButtonRenderer.untoggledServiceEndpoint.signalServiceEndpoint.actions[0].addToPlaylistCommand.videoIds                                                   = [video.id];
-								newVideo.__data.data.thumbnailOverlays[2].thumbnailOverlayToggleButtonRenderer.untoggledServiceEndpoint.signalServiceEndpoint.actions[0].addToPlaylistCommand.onCreateListCommand.createPlaylistServiceEndpoint.videoIds = [video.id];
+										event.data.results.forEach(function (video) {
+											if (!alreadyAddedVideos[video.id]) {
+												var vid            = {};
+												vid.id             = video.id;
+												vid.title          = video.title;
+												vid.length         = video.length;
+												vid.creator        = video.creator;
+												vid.creatorChannel = "https://www.youtube.com/c/" + video.creatorId;
+												vid.verified       = video.verified;
+												vid.dateAdded      = video.dateAdded;
+												vid.friends        = [{
+                                                    friend: video.user,
+                                                    friendChannel: "https://www.youtube.com/c/" + video.userId
+                                                }];
+												vid.action         = video.action;
 
-								if (video.verified) {
-									newVideo.__data.data.ownerBadges = [{
-										icon: {
-											iconType: "CHECK_CIRCLE_THICK"
-										},
-										style: "BADGE_STYLE_TYPE_VERIFIED",
-										tooltip: "Verified",
-										// TODO once again locked behind tracking
-										trackingParams: ""
-									}];
-								} else {
-									newVideo.__data.data.ownerBadges = [];
-								}
+												alreadyAddedVideos[video.id] = vid;
 
-								newVideo.firstElementChild.children[0].firstElementChild.href                                    = url;
-								newVideo.firstElementChild.children[0].firstElementChild.search                                  = "?v=" + video.id;
-								newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1]["aria-label"]   = video.title;
-								newVideo.firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.src = thumbnail;
-								newVideo.firstElementChild.children[0].firstElementChild.firstElementChild.classList.remove("empty")
-								newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].title                                                                                                           = video.title;
-								newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].innerHTML                                                                                                       = video.title;
-								newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].href                                                                                                            = url;
-								newVideo.firstElementChild.children[0].firstElementChild.children[1].firstElementChild.children[1].innerHTML                                                                                     = "\n  " + video.length + "\n";
-								newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.innerHTML = video.creator;
-								newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.href      = video.creatorChannel;
+												videosToPresent.push(vid);
+											} else {
+												alreadyAddedVideos[video.id].friends.push({
+													friend: video.user,
+													friendChannel: "https://www.youtube.com/c/" + video.userId
+												});
+											}
+										});
 
-								newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.firstElementChild.firstElementChild.children[0].children[1].firstElementChild.innerHTML = "\n      \n    " + video.creator + "\n  \n    ";
+										console.log("Recieved videos: ", videosToPresent);
 
-								if (!video.verified) {
-									newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[1].innerHTML = "";
-								}
+										videosContainer.textContent = "";
 
-								newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1].children[0].innerHTML = video.action + " by " + video.friends.map(item => `<a href="${item.friendChannel}">${item.friend}</a>`).join(", ");
+										videosToPresent.forEach(function (video) {
+											console.log("Pasting video: ", video);
 
-								var unneededViewsContainer = newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1];
+											var newVideo = polymerClone (templateVideo);
 
-								if (unneededViewsContainer.children.length == 3) {
-									unneededViewsContainer.removeChild(unneededViewsContainer.children[1]);
-								}
+											newVideo.style.opacity = "0%";
 
-								newVideo.style.opacity = "100%";
-							}, 3000);
-						});
+											videosContainer.appendChild(newVideo);
+
+											setTimeout (function () {
+												var thumbnail = "https://i.ytimg.com/vi/" + video.id + "/hqdefault.jpg";
+												// They're locked behind some sort of tracking key
+												var movingThumbnail = "https://i.ytimg.com/an_webp/" + video.id + "/mqdefault_6s.webp?sqp=&rs=";
+												var url             = "https://www.youtube.com/watch?v=" + video.id;
+
+												console.log(newVideo);
+
+												// TODO thumbnails out of view dont render when you scroll to them
+												newVideo.__data.data.videoId                                                                        = video.id;
+												newVideo.__data.data.thumbnail.thumbnails[0]                                                        = thumbnail;
+												newVideo.__data.data.thumbnail.thumbnails[1]                                                        = thumbnail;
+												newVideo.__data.data.thumbnail.thumbnails[2]                                                        = thumbnail;
+												newVideo.__data.data.title.runs[0].text                                                             = video.title;
+												newVideo.__data.data.richThumbnail.movingThumbnailRenderer.movingThumbnailDetails.thumbnails[0].url = movingThumbnail;
+												newVideo.__data.data.navigationEndpoint.watchEndpoint.videoId                                       = video.id;
+												// TODO the video wont appear if this is set
+												//newVideo.__data.data.navigationEndpoint.watchEndpoint.commandMetadata.webCommandMetadata.url = "/watch?v=" + video.id;
+												newVideo.__data.data.thumbnailOverlays[1].thumbnailOverlayToggleButtonRenderer.toggledServiceEndpoint.playlistEditEndpoint.actions[0].removedVideoId = video.id;
+
+												newVideo.__data.data.thumbnailOverlays[2].thumbnailOverlayToggleButtonRenderer.untoggledServiceEndpoint.signalServiceEndpoint.actions[0].addToPlaylistCommand.videoId                                                    = video.id;
+												newVideo.__data.data.thumbnailOverlays[2].thumbnailOverlayToggleButtonRenderer.untoggledServiceEndpoint.signalServiceEndpoint.actions[0].addToPlaylistCommand.videoIds                                                   = [video.id];
+												newVideo.__data.data.thumbnailOverlays[2].thumbnailOverlayToggleButtonRenderer.untoggledServiceEndpoint.signalServiceEndpoint.actions[0].addToPlaylistCommand.onCreateListCommand.createPlaylistServiceEndpoint.videoIds = [video.id];
+
+												if (video.verified) {
+													newVideo.__data.data.ownerBadges = [{
+														icon: {
+															iconType: "CHECK_CIRCLE_THICK"
+														},
+														style: "BADGE_STYLE_TYPE_VERIFIED",
+														tooltip: "Verified",
+														// TODO once again locked behind tracking
+														trackingParams: ""
+													}];
+												} else {
+													newVideo.__data.data.ownerBadges = [];
+												}
+
+												newVideo.firstElementChild.children[0].firstElementChild.href                                    = url;
+												newVideo.firstElementChild.children[0].firstElementChild.search                                  = "?v=" + video.id;
+												newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1]["aria-label"]   = video.title;
+												newVideo.firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.src = thumbnail;
+												newVideo.firstElementChild.children[0].firstElementChild.firstElementChild.classList.remove("empty")
+												newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].title                                                                                                           = video.title;
+												newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].innerHTML                                                                                                       = video.title;
+												newVideo.firstElementChild.children[1].firstElementChild.children[0].children[1].href                                                                                                            = url;
+												newVideo.firstElementChild.children[0].firstElementChild.children[1].firstElementChild.children[1].innerHTML                                                                                     = "\n  " + video.length + "\n";
+												newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.innerHTML = video.creator;
+												newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[0].firstElementChild.firstElementChild.firstElementChild.href      = video.creatorChannel;
+
+												newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.firstElementChild.firstElementChild.children[0].children[1].firstElementChild.innerHTML = "\n      \n    " + video.creator + "\n  \n    ";
+
+												if (!video.verified) {
+													newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[1].innerHTML = "";
+												}
+
+												newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1].children[0].innerHTML = video.action + " by " + video.friends.map(item => `<a href="${item.friendChannel}">${item.friend}</a>`).join(", ");
+
+												var unneededViewsContainer = newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1];
+
+												if (unneededViewsContainer.children.length == 3) {
+													unneededViewsContainer.removeChild(unneededViewsContainer.children[1]);
+												}
+
+												newVideo.style.opacity = "100%";
+											}, 3000);
+										});
+									}
+								});
+							}
+						}, 1000);
 					}, 2000);
 				}
 
@@ -323,6 +450,7 @@ function codeToLoad () {
 								var data = {
 									flag: "new_interaction",
 									userId: userChannelId,
+									user: userChannelName,
 									id: videoDetails.videoId,
 									title: videoDetails.title,
 									length: obtainFormattedLength (Number.parseInt(videoDetails.lengthSeconds)),
@@ -353,6 +481,7 @@ function codeToLoad () {
 											  var data = {
 												  flag: "new_interaction",
 												  userId: userChannelId,
+												  user: userChannelName,
 												  id: videoDetails.videoId,
 												  title: videoDetails.title,
 												  length: obtainFormattedLength (Number.parseInt(videoDetails.lengthSeconds)),
@@ -370,70 +499,11 @@ function codeToLoad () {
 									  };
 								  }
 							  }, 50);
-
-						// Watched videos, so there aren't repeats
-						var watchedVideos = {};
-
-						// Used to obtain watchtime and therefore to determine when it's a watch
-						window.OriginalImage
-							= window.Image;
-						window.Image = function () {
-							this.innerImage = new window.OriginalImage();
-						};
-
-						Object.defineProperty(window.Image.prototype, "src", {
-							get: function () {
-								return this.innerImage.src;
-							},
-							set: function (source) {
-								// Have obtained URL
-								if (source.includes("api/stats/watchtime")) {
-									console.log(source);
-
-									var timestamp = parseFloat (source.substring(source.indexOf("&et=") + 4));
-									if (timestamp > 30 && !watchedVideos[videoDetails.videoId]) {
-										// This is a watch
-										watchedVideos[videoDetails.videoId] = true;
-										var data                            = {
-                                            flag: "new_interaction",
-                                            userId: userChannelId,
-                                            id: videoDetails.videoId,
-                                            title: videoDetails.title,
-                                            length: obtainFormattedLength (Number.parseInt(videoDetails.lengthSeconds)),
-                                            creator: videoDetails.author,
-                                            creatorId: videoDetails.channelId,
-                                            verified: isVerified,
-                                            dateAdded: Date.now(),
-                                            action: "Watched"
-										};
-
-										console.log(data);
-
-										ws.send(JSON.stringify(data));
-									}
-								}
-								this.innerImage.src = source;
-							}
-						});
-
-						Object.defineProperty(window.Image.prototype, "onload", {
-							get: function () {
-								return this.innerImage.onload;
-							},
-							set: function (source) {
-								this.innerImage.onload = source;
-							}
-						});
-
-						Object.defineProperty(window.Image.prototype, "onerror", {
-							get: function () {
-								return this.innerImage.onerror;
-							},
-							set: function (source) {
-								this.innerImage.onerror = source;
-							}
-						});
 					}, 3000);
+
+					document.getElementsByClassName("style-scope ytd-subscribe-button-renderer")[0].onclick = function () {
+						sendChannelList ();
+					};
 				}
 
 				if (window.location.href.includes("youtube.com/channel")) {
@@ -455,6 +525,10 @@ function codeToLoad () {
 
 		document.getElementsByTagName("ytd-guide-section-renderer")[1].__data.data.items.concat(document.getElementsByTagName("ytd-guide-section-renderer")[1].children[1].children[7].__data.data.expandableItems)
 		*/
+
+					document.getElementsByClassName("style-scope ytd-subscribe-button-renderer")[0].onclick = function () {
+						sendChannelList ();
+					};
 				}
 			}
 		}, 1000)

@@ -78,6 +78,7 @@ public:
 			// clang-format off
 			bsoncxx::document::value incoming_interaction = incoming_interaction_builder
 				<< "userId" << user_id
+				<< "user" << get_string_from_bson(docview["user"])
 				<< "id" << get_string_from_bson(docview["id"])
 				<< "title" << get_string_from_bson(docview["title"])
 				<< "length" << get_string_from_bson(docview["length"])
@@ -113,35 +114,22 @@ public:
 			std::vector<bsoncxx::document::view> results;
 
 			auto all_interactions = user_interactions.find ({});
-			for (auto&& f : friends_cursor) {
-				std::string friend_id = get_string_from_bson (f["userId"]);
-
-				// TODO consider putting all interactions in the same collection
-				mongocxx::options::find opts;
-				// Sort descending
-				opts.sort (make_document (kvp ("dateAdded", -1)));
-				// Limit results
-				opts.limit (quantity);
-				// Find elements older than the supplied date
-				auto cursor = youtubefeed_database["interactions_" + friend_id].find (
-					make_document (kvp ("dateAdded", make_document (kvp ("$lt", older_than)))), opts);
-
-				for (auto& interaction : cursor) {
-					results.push_back (interaction);
-				}
+			for (auto&& d : all_interactions) {
+				puts (fmt::format ("{}\n", bsoncxx::to_json (d)).c_str ());
 			}
 		} else if (string_flag == "request_entries") {
 			int64_t older_than = docview["olderThan"].get_int64 ().value;
-			int64_t quantity   = docview["quantity"].get_int64 ().value;
+			int64_t quantity   = (int64_t)docview["quantity"].get_int32 ().value;
 
 			std::string user_id               = get_string_from_bson (docview["userId"]);
 			mongocxx::collection user_friends = youtubefeed_database["friends_" + user_id];
 
-			std::vector<bsoncxx::document::view> results;
+			std::vector<bsoncxx::document::value> results;
 
 			auto friends_cursor = user_friends.find ({});
 			for (auto&& f : friends_cursor) {
-				std::string friend_id = get_string_from_bson (f["userId"]);
+				std::string friend_id       = get_string_from_bson (f["userId"]);
+				std::string collection_name = "interactions_" + friend_id;
 
 				// TODO consider putting all interactions in the same collection
 				mongocxx::options::find opts;
@@ -149,12 +137,16 @@ public:
 				opts.sort (make_document (kvp ("dateAdded", -1)));
 				// Limit results
 				opts.limit (quantity);
-				// Find elements older than the supplied date
-				auto cursor = youtubefeed_database["interactions_" + friend_id].find (
-					make_document (kvp ("dateAdded", make_document (kvp ("$lt", older_than)))), opts);
 
-				for (auto& interaction : cursor) {
-					results.push_back (interaction);
+				if (youtubefeed_database.has_collection (collection_name)) {
+					// Find elements older than the supplied date
+					auto cursor = youtubefeed_database[collection_name].find (
+						make_document (kvp ("dateAdded", make_document (kvp ("$lt", older_than)))), opts);
+
+					for (auto& interaction : cursor) {
+						// So that the results in the vector are owning
+						results.push_back (bsoncxx::document::value (interaction));
+					}
 				}
 			}
 
@@ -173,12 +165,14 @@ public:
 					result += bsoncxx::to_json (results[i]);
 				} else {
 					result += bsoncxx::to_json (results[i]) + ",";
-					i++;
 				}
+				i++;
 			}
 
+			puts (fmt::format ("Recommendations results: {}\n", result).c_str ());
+
 			server::connection_ptr con = m_server.get_con_from_hdl (hdl);
-			msg->set_payload ("{'results':" + result + "}");
+			msg->set_payload ("{\"results\":" + result + ",\"flag\":\"recieve_entries\"}");
 			msg->set_opcode (websocketpp::frame::opcode::text);
 			msg->set_compressed (true);
 			con->send (msg);
@@ -208,6 +202,22 @@ public:
 
 			mongocxx::collection user_friends = youtubefeed_database["friends_" + user_id];
 			auto result                       = user_friends.delete_one (remove_friend.view ());
+		} else if (string_flag == "send_subscriptions") {
+			std::string user_id               = get_string_from_bson (docview["userId"]);
+			mongocxx::collection user_friends = youtubefeed_database["friends_" + user_id];
+
+			// Delete all existing records
+			user_friends.delete_many ({});
+
+			// Add subscriptions
+			std::vector<bsoncxx::document::value> subs;
+
+			for (auto&& sub : docview["data"].get_array ().value) {
+				subs.push_back (
+					bsoncxx::builder::stream::document {} << "userId" << get_string_from_bson (sub["id"]) << bsoncxx::builder::stream::finalize);
+			}
+
+			user_friends.insert_many (subs);
 		}
 	}
 
