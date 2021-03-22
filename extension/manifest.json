@@ -14,5 +14,9 @@
 			],
 			"run_at": "document_idle"
 		}
-	]
+	],
+	"icons": {
+		"48": "icon.svg",
+		"96": "icon.svg"
+	}
 }
