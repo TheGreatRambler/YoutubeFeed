@@ -13,7 +13,7 @@ cd build
 echo $rootFolder
 #cmake -G "Unix Makefiles" .. -DCMAKE_BUILD_TYPE=Release -Dlibbson-1.0_DIR="..\..\mongocdriver\cmake-build\cmake_build\lib\cmake\libbson-1.0"
 cmake -G "Unix Makefiles" .. -DCMAKE_BUILD_TYPE=Release -Dlibbson-static-1.0_DIR="${rootFolder}/cmake_build/lib/cmake/libbson-static-1.0" -Dlibmongoc-static-1.0_DIR="${rootFolder}/cmake_build/lib/cmake/libmongoc-static-1.0" -DCMAKE_CXX_FLAGS="-I'${rootFolder}/cmake_build/include/libmongoc-1.0' -I'${rootFolder}/cmake_build/include/libbson-1.0'" -DBUILD_SHARED_LIBS=OFF -DBUILD_SHARED_AND_STATIC_LIBS=OFF -DBSONCXX_POLY_USE_MNMLSTC=1
-make
+make mongocxx_static
 make install
 cd ../../../../
 

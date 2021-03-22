@@ -1,1 +1,1 @@
-cd extension && zip -r ../YoutubeFeed.xpi manifest.json content.js
+cd extension && zip -r ../YoutubeFeed.xpi manifest.json content.js icon.svg
