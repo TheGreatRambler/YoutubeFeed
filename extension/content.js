@@ -1,5 +1,6 @@
 function codeToLoad () {
-	var ws = new WebSocket ("wss://localhosttester.com:9002");
+	// My server IP
+	var ws = new WebSocket ("wss://45.33.94.174:9002");
 	var userChannelId;
 	var userChannelName;
 
