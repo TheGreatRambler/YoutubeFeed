@@ -1,3 +1,4 @@
+mkdir -p server/ssl
 cd server/ssl
 openssl genrsa -out server.key 2048
 openssl req -sha256 -new -key server.key -days 3650 -config db.cfg -out server.csr

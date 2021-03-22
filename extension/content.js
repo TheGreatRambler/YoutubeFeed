@@ -1,6 +1,6 @@
 function codeToLoad () {
 	// My server IP
-	var ws = new WebSocket ("wss://45.33.94.174:9002");
+	var ws = new WebSocket ("wss://tgrcode.com:9002");
 	var userChannelId;
 	var userChannelName;
 
