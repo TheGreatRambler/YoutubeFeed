@@ -198,6 +198,12 @@ function codeToLoad () {
 			}
 		});
 
+		Object.defineProperty(window.Image.prototype, "currentSrc", {
+			get: function () {
+				return this.innerImage.src;
+			}
+		});
+
 		Object.defineProperty(window.Image.prototype, "onload", {
 			get: function () {
 				return this.innerImage.onload;
@@ -260,6 +266,8 @@ function codeToLoad () {
 							}
 						}
 
+						var templateChannelName = document.getElementsByTagName("ytd-channel-name")[0];
+
 						console.log("Obtained template");
 
 						// TODO will obtain data later
@@ -308,27 +316,27 @@ function codeToLoad () {
 								var videosToPresent = [];
 
 								ws.addEventListener("message", function (event) {
-									var flag = event.data.flag;
+									var data = JSON.parse(event.data);
+									var flag = data.flag;
+									console.log("Message recieved: ", flag);
 
 									// Only run once
 									if (flag == "recieve_entries" && videosToPresent.length == 0) {
-										console.log(event.data);
-
 										var alreadyAddedVideos = {};
 
-										event.data.results.forEach(function (video) {
+										data.results.forEach(function (video) {
 											if (!alreadyAddedVideos[video.id]) {
 												var vid            = {};
 												vid.id             = video.id;
 												vid.title          = video.title;
 												vid.length         = video.length;
 												vid.creator        = video.creator;
-												vid.creatorChannel = "https://www.youtube.com/c/" + video.creatorId;
+												vid.creatorChannel = "https://www.youtube.com/channel/" + video.creatorId;
 												vid.verified       = video.verified;
 												vid.dateAdded      = video.dateAdded;
 												vid.friends        = [{
                                                     friend: video.user,
-                                                    friendChannel: "https://www.youtube.com/c/" + video.userId
+                                                    friendChannel: "https://www.youtube.com/channel/" + video.userId
                                                 }];
 												vid.action         = video.action;
 
@@ -338,7 +346,7 @@ function codeToLoad () {
 											} else {
 												alreadyAddedVideos[video.id].friends.push({
 													friend: video.user,
-													friendChannel: "https://www.youtube.com/c/" + video.userId
+													friendChannel: "https://www.youtube.com/channel/" + video.userId
 												});
 											}
 										});
@@ -409,10 +417,38 @@ function codeToLoad () {
 												newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.firstElementChild.firstElementChild.children[0].children[1].firstElementChild.innerHTML = "\n      \n    " + video.creator + "\n  \n    ";
 
 												if (!video.verified) {
-													newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[1].innerHTML = "";
+													try {
+														// This will trigger an exception in the backend, ignore
+														newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[0].firstElementChild.children[1].innerHTML = "";
+													} catch (e) {
+													}
 												}
 
-												newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1].children[0].innerHTML = video.action + " by " + video.friends.map(item => `<a href="${item.friendChannel}">${item.friend}</a>`).join(", ");
+												newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1].children[0].innerHTML = "<p>" + video.action + " by </p>";
+												var elementToAddAfter                                                                                                    = newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1].children[0].firstElementChild;
+
+												video.friends.forEach(function (item, index) {
+													var fakeChannelName = polymerClone (templateChannelName);
+
+													console.log(fakeChannelName);
+
+													fakeChannelName.__data.tooltipText                                                                   = item.friend;
+													fakeChannelName.__data.channelName.runs[0].text                                                      = item.friend;
+													fakeChannelName.__data.badges.length                                                                 = 0;
+													fakeChannelName.__data.channelName.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl        = item.friendChannel;
+													fakeChannelName.__data.channelName.runs[0].navigationEndpoint.commandMetadata.webCommandMetadata.url = item.friendChannel;
+													fakeChannelName.firstElementChild.firstElementChild.firstElementChild.firstElementChild.href         = item.friendChannel;
+
+													elementToAddAfter.after(fakeChannelName);
+
+													elementToAddAfter = fakeChannelName;
+
+													if (index != video.friends.length - 1) {
+														var delimiter = document.createTextNode(", ");
+														elementToAddAfter.after(delimiter);
+														elementToAddAfter = delimiter;
+													}
+												});
 
 												var unneededViewsContainer = newVideo.firstElementChild.children[1].firstElementChild.children[1].firstElementChild.children[1];
 
