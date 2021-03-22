@@ -1,5 +1,5 @@
 cd server
-make
+make BUILD=release
 cd ../
 cp server/ssl/server.pem server/bin
 cp server/ssl/server.key server/bin
