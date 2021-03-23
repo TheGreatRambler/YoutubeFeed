@@ -21,8 +21,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     sudo apt-get install -y libssl-dev
     sudo apt-get install -y libfmt-dev
     sudo apt-get install -y zlib1g-dev
-    sudo apt-get install -y zstd-dev
-    sudo apt-get install -y libicu-dev
+    sudo apt-get install -y libzstd-dev
 else
     pacman -S mingw-w64-x86_64-openssl
     pacman -S mingw-w64-x86_64-fmt
